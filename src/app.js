@@ -1,7 +1,7 @@
 const path = require('path')
 const express = require('express')
 const hbs = require('hbs')
-const geocode = require('./utils/geocode')
+const {geocode,reverseGeocode} = require('./utils/geocode')
 const forecast = require('./utils/forecast')
 
 
@@ -46,12 +46,13 @@ app.get('/help', (req, res) => {
 })
 
 app.get('/weather', (req, res) => {
-    if(!req.query.address) {
+    if(!req.query.address && !(req.query.longitude && req.query.latitude)) {
         return res.send({
-            error: 'You must provide an address'
+            error: 'You must provide an address or long&lat'
         })
     }
 
+    if(req.query.address) {
     geocode(req.query.address, (error, { latitude, longitude, location } = {}) => {
         if (error) {
             return res.send({error})
@@ -69,6 +70,23 @@ app.get('/weather', (req, res) => {
 
         })
     })
+    } else { // req.query long & lat was provided 
+        // Needs refactoring, now duplicate code forecast long & lat twice.
+        forecast(req.query.latitude, req.query.longitude, (error, forecastData) => {
+            if (error) {
+                return res.send(({error}))
+            }
+            reverseGeocode(req.query.longitude, req.query.latitude, (error, location) => {
+                res.send({
+                    forecast: forecastData,
+                    location: location.place_name,
+                    address : ""
+                })                
+            })
+
+        })
+    }
+
 
 
 
